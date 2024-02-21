@@ -3,6 +3,16 @@ name = "refunfable_erc721"
 version = "0.1.0"
 edition = "2023_10"
 
-# See more keys and their definitions at https://docs.swmansion.com/scarb/docs/reference/manifest.html
-
 [dependencies]
+starknet = "2.4.4"
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.8.0" }
+storage_read = { git = "https://github.com/starknet-id/storage_read_component.git", rev = "c6c69e15d34abfc39ac51dc21b96724e2e19ff31" }
+
+[[target.starknet-contract]]
+sierra = true
+casm = true
+casm-add-pythonic-hints = true
+
+[lib]
+sierra = true
+casm = false
