@@ -30,8 +30,26 @@ mod RefundableERC721 {
     #[event]
     #[derive(Drop, starknet::Event)]
     enum Event {
+        ClaimedRefund: ClaimedRefund,
+        AdminClaimedFunds: AdminClaimedFunds,
         #[flat]
         StorageReadEvent: storage_read_component::Event,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct ClaimedRefund {
+        #[key]
+        nft_id: u256,
+        #[key]
+        buyer: ContractAddress,
+        refunded_amount: u256,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    struct AdminClaimedFunds {
+        #[key]
+        erc20: ContractAddress,
+        amount: u256,
     }
 
     #[constructor]
@@ -80,18 +98,25 @@ mod RefundableERC721 {
                 .transfer(caller, to_refund);
             // take nft from user
             nft_dispatcher.transfer_from(caller, self.admin.read(), nft_id);
+            self
+                .emit(
+                    Event::ClaimedRefund(
+                        ClaimedRefund { nft_id, buyer: caller, refunded_amount: to_refund, }
+                    )
+                );
         }
 
         fn admin_claim_funds(ref self: ContractState, erc20: ContractAddress) {
             let erc20_dispatcher = IERC20Dispatcher { contract_address: erc20 };
             let caller = get_caller_address();
             // erc20 is a param so you can withdraw anything
-            erc20_dispatcher
-                .transfer_from(caller, get_contract_address(), erc20_dispatcher.balance_of(caller));
+            let amount = erc20_dispatcher.balance_of(caller);
+            erc20_dispatcher.transfer_from(caller, get_contract_address(), amount);
             assert(
                 self.refund_end_time.read() <= get_block_timestamp(),
                 'The refund period has not ended'
             );
+            self.emit(Event::AdminClaimedFunds(AdminClaimedFunds { erc20, amount }));
         }
 
         fn get_claimable(self: @ContractState, nft_id: u256) -> u256 {
