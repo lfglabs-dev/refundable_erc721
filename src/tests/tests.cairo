@@ -101,10 +101,30 @@ fn test_claim_refund_after_end_transfer() {
     refund.claim_refund(nft_id);
 }
 
-
 #[test]
 #[should_panic(expected: ('The refund period has ended', 'ENTRYPOINT_FAILED'))]
-fn test_admin_claim_funds_post_end_time() {
+fn test_claim_refund_post_end_time() {
+    let (erc20, erc721, erc721_custom, refund) = deploy_contract();
+    let admin = starknet::contract_address_const::<0x123>();
+    let normal_user = starknet::contract_address_const::<0x456>();
+    set_contract_address(admin);
+    erc20.transfer(normal_user, 1);
+    set_contract_address(normal_user);
+    // before the refund
+    set_block_timestamp(500);
+
+    let price = 1;
+    let nft_id = 1;
+    set_block_timestamp(1500);
+    erc20.approve(refund.contract_address, price);
+    erc721_custom.mint(nft_id);
+    erc721.approve(refund.contract_address, nft_id);
+    let prev_admin_balance = erc20.balance_of(admin);
+    refund.claim_refund(nft_id);
+}
+
+#[test]
+fn test_admin_claim_funds_after_end_time() {
     let (erc20, erc721, erc721_custom, refund) = deploy_contract();
     let admin = starknet::contract_address_const::<0x123>();
     let normal_user = starknet::contract_address_const::<0x456>();
@@ -118,12 +138,33 @@ fn test_admin_claim_funds_post_end_time() {
     let nft_id = 1;
     erc20.approve(refund.contract_address, price);
     erc721_custom.mint(nft_id);
-    erc721.approve(refund.contract_address, nft_id);
-    refund.claim_refund(nft_id);
 
     set_block_timestamp(1500);
     set_contract_address(admin);
     let prev_admin_balance = erc20.balance_of(admin);
-    refund.claim_refund(nft_id);
+    refund.admin_claim_funds(erc20.contract_address);
+    assert(erc20.balance_of(admin) == prev_admin_balance + 1, 'Admin didn\'t claim correctly')
+}
+
+#[test]
+#[should_panic(expected: ('The refund period has not ended', 'ENTRYPOINT_FAILED'))]
+fn test_admin_claim_funds_before_end_time() {
+    let (erc20, erc721, erc721_custom, refund) = deploy_contract();
+    let admin = starknet::contract_address_const::<0x123>();
+    let normal_user = starknet::contract_address_const::<0x456>();
+    set_contract_address(admin);
+    erc20.transfer(normal_user, 1);
+    set_contract_address(normal_user);
+    // before the refund
+    set_block_timestamp(500);
+
+    let price = 1;
+    let nft_id = 1;
+    erc20.approve(refund.contract_address, price);
+    erc721_custom.mint(nft_id);
+
+    set_contract_address(admin);
+    let prev_admin_balance = erc20.balance_of(admin);
+    refund.admin_claim_funds(erc20.contract_address);
     assert(erc20.balance_of(admin) == prev_admin_balance + 1, 'Admin didn\'t claim correctly')
 }
