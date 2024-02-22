@@ -86,9 +86,7 @@ mod RefundableERC721 {
             // erc20 is a param so you can withdraw anything
             let erc20_dispatcher = IERC20Dispatcher { contract_address: erc20 };
             erc20_dispatcher
-                .transfer(
-                    get_caller_address(), erc20_dispatcher.balance_of(get_contract_address())
-                );
+                .transfer(self.admin.read(), erc20_dispatcher.balance_of(get_contract_address()));
             assert(
                 self.refund_end_time.read() <= get_block_timestamp(),
                 'The refund period has not ended'
